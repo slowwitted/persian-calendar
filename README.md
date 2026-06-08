@@ -84,6 +84,19 @@
 - **مدیریت هفته‌های مرزی** برای نمایش صحیح رویدادها
 - **افکت‌های بصری** شامل گرادیان، سایه و انیمیشن
 
+#### ⏰ هشدار درون‌صفحه‌ای رویدادهای ساعت‌دار (آفلاین)
+
+برای رویدادهایی که **رأس ساعت** ⏰ دارند، یک سیستم هشدار کاملاً آفلاین و بدون نیاز به سرور یا مجوز مرورگر اضافه شده است:
+
+- **پاپ‌آپ درون‌صفحه‌ای:** هنگام رسیدن به ساعت رویداد، یک کارت اعلان در گوشه صفحه نمایش داده می‌شود
+- **بدون بسته‌شدن خودکار:** کارت تا زمانی که با دکمه `✕` آن را نبندید باقی می‌ماند
+- **هشدار صوتی:** پخش بوق هشدار با استفاده از Web Audio API
+- **اسکن دوره‌ای:** بررسی خودکار رویدادها هر ۳۰ ثانیه
+- **جلوگیری از تکرار:** هر رویداد در طول روز فقط یک‌بار هشدار داده می‌شود
+- **پشتیبانی از رویدادهای سالانه** علاوه بر رویدادهای تاریخ‌دار عادی
+
+> **توجه فنی:** به‌دلیل محدودیت مرورگرها، پخش صدا فقط پس از اولین کلیک کاربر روی صفحه فعال می‌شود. همچنین برای فعال‌بودن اسکن یادآوری‌ها، تب تقویم باید باز باشد.
+
 ---
 
 ## 🚀 نصب و اجرا
@@ -97,7 +110,7 @@
 1. **دانلود فایل‌ها**
 
 <div dir="ltr" align="left">
-
+  
 ```bash
 git clone https://github.com/slowwitted/persian-calendar.git
 cd persian-calendar
@@ -116,9 +129,9 @@ cd persian-calendar
 <div dir="ltr" align="left">
 
 ```bash
-open calendar.html        # macOS
-xdg-open calendar.html    # Linux
-start calendar.html       # Windows
+open calendar.html # macOS
+xdg-open calendar.html # Linux
+start calendar.html # Windows
 ```
 
 </div>
@@ -133,13 +146,14 @@ start calendar.html       # Windows
 
 <div dir="ltr" align="left">
 
-```text
+```
 persian-calendar/
-├── calendar.html        # فایل اصلی HTML
-├── calendar.css         # استایل ظاهری
-├── IRANSans.woff2       # فونت فارسی
-├── jalali-calendar.js   # منطق برنامه
-└── README.md            # توضیحات برنامه
+├── calendar.html # فایل اصلی HTML
+├── calendar.css # استایل ظاهری
+├── IRANSans.woff2 # فونت فارسی
+├── jalali-calendar.js # منطق برنامه + سیستم هشدار آفلاین
+├── moon-in-scorpio.svg # آیکن قمر در عقرب
+└── README.md # توضیحات برنامه
 ```
 
 </div>
@@ -210,6 +224,7 @@ php -S localhost:8000
 - بازه زمانی را انتخاب کنید (بامداد، صبح، ظهر، عصر، شب)
 - ساعت شروع را تعیین کنید
 - برای تکرار ساعتی، گزینه **تکرار هر N ساعت** را فعال کنید
+- هنگام رسیدن به ساعت تعیین‌شده، در صورت باز بودن تقویم، یک **هشدار درون‌صفحه‌ای** با صدا نمایش داده می‌شود
 
 ### تکرار رویداد
 
@@ -364,13 +379,7 @@ php -S localhost:8000
 ### نمایش آیکن قمر در عقرب
 
 روزهای قمر در عقرب با ایکن اختصاصی
-<img
-  alt="قمر در عقرب"
-  width="20"
-  height="20"
-  style="vertical-align: middle;"
-  src="data:image/svg+xml;utf8,%3Csvg width='16.8' height='16.8' viewBox='0 0 24 24' aria-hidden='true' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3CclipPath id='moon-in-scorpio-readme'%3E%3Crect x='0' y='0' width='16.4' height='24' /%3E%3C/clipPath%3E%3C/defs%3E%3Cpath clip-path='url(%23moon-in-scorpio-readme)' fill='%23F97316' stroke='none' fill-rule='evenodd' d='M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z M14 3.8a8.2 8.2 0 1 1 0 16.4a8.2 8.2 0 1 1 0-16.4z'/%3E%3Cg fill='none' stroke='%23991B1B' stroke-linecap='round' stroke-linejoin='round' transform='translate(12.0 8.2) scale(1.3225)'%3E%3Cpath d='M0.2 4l-1.2-0.6 0.7-1 1.2 0.6' stroke-width='1.2' /%3E%3Cpath d='M6.2 4l1.2-0.6-0.7-1-1.2 0.6' stroke-width='1.2' /%3E%3Cpath d='M0.9 4.6c1.4 1 3.4 1 4.8 0' stroke-width='1.2' /%3E%3Cpath d='M2.0 5.6 L0.8 6.4' stroke-width='0.48' /%3E%3Cpath d='M0.8 6.4 L2.0 7.2' stroke-width='0.24' /%3E%3Cpath d='M4.2 5.6 L5.4 6.4' stroke-width='0.48' /%3E%3Cpath d='M5.4 6.4 L4.2 7.2' stroke-width='0.24' /%3E%3Cpath d='M3 4.2c1-1.1 1.2-2.6 0.2-4' stroke-width='1.2' /%3E%3Cpath d='M3.2 0.2l1-0.7' stroke-width='1.2' /%3E%3C/g%3E%3C/svg%3E"
-/>
+<img alt="قمر در عقرب" width="20" height="20" style="vertical-align: middle;" src="moon-in-scorpio.svg" />
 در تقویم نمایش داده می‌شوند.
 
 ### ویژگی‌ها
@@ -418,8 +427,10 @@ php -S localhost:8000
 - ✅ **ذخیره خودکار** - تمام داده‌ها در مرورگر ذخیره می‌شوند
 - ✅ **سبک و سریع** - بدون وابستگی به لایبرری‌های سنگین
 - ✅ **نمایش قمر در عقرب** - با آیکن اختصاصی و محاسبه تقریبی داخلی
+- ✅ **هشدار آفلاین رویدادهای ساعت‌دار** - بدون نیاز به مجوز مرورگر یا سرور
 - ⚠️ **نسخه دسکتاپ/تبلت** - برای موبایل بهینه نشده
 - ⚠️ **قمر در عقرب تقریبی است** - محاسبه آن دستی بوده و با تخمین موقعیت ماه انجام می‌شود
+- ⚠️ **هشدار فقط با تب باز** - برای فعال‌بودن یادآوری‌ها، تقویم باید باز باشد و صدا پس از اولین کلیک کاربر فعال می‌شود
 - ⚠️ **پاک کردن حافظه مرورگر** - داده‌ها حذف می‌شوند (پشتیبان بگیرید)
 
 ---

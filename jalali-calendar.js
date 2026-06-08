@@ -4617,3 +4617,208 @@ function attachCalendar(containerId) {
 
   render();
 }
+
+(function () {
+  function g2j(gy, gm, gd) {
+    const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+    let jy = gy <= 1600 ? 0 : 979;
+    gy -= gy <= 1600 ? 621 : 1600;
+    const gy2 = gm > 2 ? gy + 1 : gy;
+    let days =
+      365 * gy +
+      Math.floor((gy2 + 3) / 4) -
+      Math.floor((gy2 + 99) / 100) +
+      Math.floor((gy2 + 399) / 400) -
+      80 +
+      gd +
+      g_d_m[gm - 1];
+    jy += 33 * Math.floor(days / 12053);
+    days %= 12053;
+    jy += 4 * Math.floor(days / 1461);
+    days %= 1461;
+    if (days > 365) {
+      jy += Math.floor((days - 1) / 365);
+      days = (days - 1) % 365;
+    }
+    const jm =
+      days < 186
+        ? 1 + Math.floor(days / 31)
+        : 7 + Math.floor((days - 186) / 30);
+    const jd = 1 + (days < 186 ? days % 31 : (days - 186) % 30);
+    return [jy, jm, jd];
+  }
+
+  function todayParts() {
+    const d = new Date();
+    const [jy, jm, jd] = g2j(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    const dateKey = `${jy}/${String(jm).padStart(2, "0")}/${String(jd).padStart(2, "0")}`;
+    const annualKey = `${String(jm).padStart(2, "0")}/${String(jd).padStart(2, "0")}`;
+    const nowMin = d.getHours() * 60 + d.getMinutes();
+    return { dateKey, annualKey, nowMin };
+  }
+
+  function parseTimes(clockTimes) {
+    if (!clockTimes) return [];
+    return clockTimes
+      .split("|")
+      .map((s) => s.trim())
+      .map((part) => {
+        const m = part.match(/(\d{1,2}):(\d{2})/);
+        if (!m) return null;
+        return {
+          min: parseInt(m[1], 10) * 60 + parseInt(m[2], 10),
+          label: part,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function loadEv() {
+    try {
+      return JSON.parse(localStorage.getItem("jalali_events") || "{}");
+    } catch {
+      return {};
+    }
+  }
+  function loadFired() {
+    try {
+      return JSON.parse(localStorage.getItem("jalali_fired_notifs") || "{}");
+    } catch {
+      return {};
+    }
+  }
+  function saveFired(f) {
+    localStorage.setItem("jalali_fired_notifs", JSON.stringify(f));
+  }
+
+  function typeInfo(type) {
+    const ET = typeof EVENT_TYPES !== "undefined" ? EVENT_TYPES : null;
+    const t = (ET && ET[type]) || null;
+    return {
+      label: t ? t.label : "🔔 یادآوری",
+      color: t ? t.color : "#f59e0b",
+    };
+  }
+
+  let audioCtx = null;
+  function unlockAudio() {
+    if (audioCtx) return;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    } catch {}
+  }
+  window.addEventListener("click", unlockAudio);
+  window.addEventListener("keydown", unlockAudio);
+
+  function beep() {
+    if (!audioCtx) return;
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    try {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g);
+      g.connect(audioCtx.destination);
+      o.type = "sine";
+      o.frequency.value = 880;
+      const t = audioCtx.currentTime;
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.exponentialRampToValueAtTime(0.25, t + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+      o.start(t);
+      o.stop(t + 0.7);
+    } catch {}
+  }
+
+  function ensureContainer() {
+    let c = document.getElementById("__notif_box");
+    if (c) return c;
+    c = document.createElement("div");
+    c.id = "__notif_box";
+    c.style.cssText =
+      "position:fixed;top:16px;left:16px;z-index:999999;display:flex;flex-direction:column;gap:10px;direction:rtl;font-family:Tahoma,sans-serif;";
+    document.body.appendChild(c);
+    return c;
+  }
+
+  function showPopup(ev, timeLabel) {
+    const info = typeInfo(ev.type);
+    const title = ev.text ? ev.text : info.label;
+    const c = ensureContainer();
+    const card = document.createElement("div");
+    card.style.cssText =
+      "position:relative;min-width:240px;max-width:320px;" +
+      "background-color:" +
+      info.color +
+      ";color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.5);" +
+      "border-radius:10px;padding:12px 32px 12px 14px;" +
+      "box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;transform:translateX(-20px);transition:all .25s ease;";
+    card.innerHTML =
+      `<div style="font-weight:bold;margin-bottom:4px;font-size:14px;">${info.label}</div>` +
+      `<div style="font-size:13px;margin-bottom:4px;">${title}</div>` +
+      `<div style="font-size:12px;opacity:.9;">⏰ ${timeLabel}</div>` +
+      `<span style="position:absolute;top:6px;left:8px;cursor:pointer;font-size:16px;opacity:.85;">✕</span>`;
+    card.querySelector("span").onclick = () => card.remove();
+    c.appendChild(card);
+    requestAnimationFrame(() => {
+      card.style.opacity = "1";
+      card.style.transform = "translateX(0)";
+    });
+    beep();
+    if ("Notification" in window && Notification.permission === "granted") {
+      try {
+        new Notification(info.label, { body: title + " — " + timeLabel });
+      } catch {}
+    }
+  }
+
+  function checkNow() {
+    const { dateKey, annualKey, nowMin } = todayParts();
+    const events = loadEv();
+    let fired = loadFired();
+    if (fired._day !== dateKey) fired = { _day: dateKey };
+
+    const lists = [];
+    if (events[dateKey]) lists.push(...events[dateKey]);
+    if (events._annual && events._annual[annualKey])
+      lists.push(...events._annual[annualKey]);
+
+    lists.forEach((ev) => {
+      if (!ev || !ev.clock || !ev.clockTimes) return;
+      parseTimes(ev.clockTimes).forEach((t) => {
+        if (nowMin >= t.min && nowMin - t.min < 60) {
+          const id = `${dateKey}|${ev.repeatId || ev.text}|${t.min}`;
+          if (fired[id]) return;
+          fired[id] = true;
+          showPopup(ev, t.label);
+        }
+      });
+    });
+    saveFired(fired);
+  }
+
+  function start() {
+    if ("Notification" in window && Notification.permission === "default") {
+      try {
+        Notification.requestPermission();
+      } catch {}
+    }
+    checkNow();
+    setInterval(checkNow, 30000);
+
+    window.addEventListener("storage", (e) => {
+      if (e.key === "jalali_events") checkNow();
+    });
+    if (typeof EventBus !== "undefined" && EventBus.on) {
+      EventBus.on("calendarUpdate", checkNow);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+
+  window.__checkNotifNow = checkNow;
+})();
