@@ -492,7 +492,6 @@ body {
   font-weight: 500;
 }
 
-/* پالس چراغ هشدار وقتی هاور نیست */
 .mis-item:not(:hover) {
   animation: warningPulse 3s ease-in-out infinite;
 }
@@ -511,10 +510,9 @@ body {
   background: #ffebee;
   color: #b71c1c;
   font-weight: 600;
-  animation: none; /* در هاور قطع شود */
+  animation: none;
 }
 
-/* احترام به تنظیمات کاربر */
 @media (prefers-reduced-motion: reduce) {
   .mis-item:not(:hover) {
     animation: none;
@@ -716,7 +714,6 @@ body {
 .cal-modal-events {
   padding: 20px;
   min-height: 100px;
-  max-height: 300px;
   overflow-y: auto;
 }
 
@@ -3238,4 +3235,27 @@ body {
   border-radius: 4px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.filter-dropdown-menu {
+  pointer-events: auto;
+  position: absolute !important;
+  top: calc(100% + 4px);
+  right: 0;
+  left: auto;
+  z-index: 10000;
+  max-height: 300px;
+  overflow-y: auto;
+  min-width: 200px;
+  margin-top: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.filter-dropdown-menu .filter-option,
+.filter-dropdown-menu .filter-menu-item {
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+}
+.filter-dropdown-menu .filter-option:hover {
+  background: rgba(0, 0, 0, 0.06);
 }

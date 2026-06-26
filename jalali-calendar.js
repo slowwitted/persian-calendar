@@ -160,6 +160,60 @@ const ANNUAL_TYPES = new Set([
 
 const BELL_DISPLAY_MODE_KEY = "bellDisplayMode";
 
+const MONTH_EVENTS_CATEGORIES = {
+  all: { label: "✅ همه", types: null },
+  health: { label: "🏥 سلامت و درمان", types: ["doctor", "medicine", "sport"] },
+  finance: {
+    label: "💰 مالی",
+    types: [
+      "bill",
+      "cheque",
+      "rent",
+      "insurance",
+      "tuition",
+      "transfer",
+      "shopping",
+      "subscription",
+    ],
+  },
+  work: {
+    label: "🎓 آموزشی و کاری",
+    types: ["class", "work", "meeting", "deadline", "interview"],
+  },
+  social: {
+    label: "💕 اجتماعی",
+    types: [
+      "birthday",
+      "mourning",
+      "date_romantic",
+      "party",
+      "engagement",
+      "wedding",
+      "anniversary",
+      "holiday",
+    ],
+  },
+  general: {
+    label: "📌 عمومی",
+    types: [
+      "personal",
+      "reminder",
+      "travel",
+      "maintenance",
+      "delivery",
+      "journal",
+    ],
+  },
+};
+
+function getMonthEventsFilter() {
+  return localStorage.getItem("jalali_month_events_filter") || "all";
+}
+
+function setMonthEventsFilter(v) {
+  localStorage.setItem("jalali_month_events_filter", v);
+}
+
 const MOON_IN_SCORPIO = (
   id = `half-${Math.random().toString(36).slice(2, 9)}`,
 ) => `
@@ -2328,7 +2382,6 @@ function attachCalendar(containerId) {
     overlay.addEventListener("click", closePopup);
     popup.querySelector(".reaction-cancel").onclick = closePopup;
 
-    // --- کمک برای ساخت ID ثابت رویداد سالانه ---
     function ensureAnnualId(e) {
       if (!e._aid) {
         e._aid = crypto.randomUUID?.() || String(Date.now() + Math.random());
@@ -2358,7 +2411,6 @@ function attachCalendar(containerId) {
         events._annualReactions[yearKey] ??= {};
         events._annualReactions[yearKey][aid] = reaction;
 
-        // مطمئن شو ری‌اکشن روی خود رویداد سالانه ذخیره نشه
         if (ev.reaction) delete ev.reaction;
       } else {
         list[idx].reaction = reaction;
@@ -3775,6 +3827,10 @@ function attachCalendar(containerId) {
 
     function openMonthEvents() {
       const events = loadEvents();
+
+      const activeFilter = getMonthEventsFilter();
+      const allowedTypes = MONTH_EVENTS_CATEGORIES[activeFilter]?.types || null;
+
       const monthName = MONTH_NAMES[curM - 1];
 
       const todayG = new Date();
@@ -3798,6 +3854,7 @@ function attachCalendar(containerId) {
           const clockInfo = ev.clockTimes
             ? `⏰ راس ساعت: ${ev.clockTimes}`
             : "";
+
           if (label) {
             eventDisplay = text
               ? `${label} — ${text}${clockInfo}`
@@ -3844,66 +3901,232 @@ function attachCalendar(containerId) {
         const annual = (events._annual && events._annual[md]) || [];
         const dayEvs = [...normal, ...annual];
 
-        dayEvs.forEach((ev) => buildRow(ev, d));
+        dayEvs.forEach((ev) => {
+          if (allowedTypes) {
+            const t = typeof ev === "string" ? null : ev.type;
+            if (!t || !allowedTypes.includes(t)) return;
+          }
+          buildRow(ev, d);
+        });
       }
 
       rows.sort((a, b) => a.day - b.day);
 
-      let content;
-      if (rows.length === 0) {
-        content = `<div style="text-align:center; padding:20px; color:#888;">📭 هیچ رویدادی در ${monthName} ${curY} ثبت نشده</div>`;
-      } else {
-        content = `
-          <div class="month-events-scroll">
-            <table class="month-events-table">
-              <thead>
-                <tr>
-                  <th>روز</th>
-                  <th>رویداد</th>
-                  <th>وضعیت</th>
-                  <th>واکنش</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rows
+      const categoriesArray = Object.entries(MONTH_EVENTS_CATEGORIES).map(
+        ([id, info]) => ({
+          id,
+          name: info.label,
+        }),
+      );
+
+      const activeCategoryLabel =
+        categoriesArray.find((c) => String(c.id) === String(activeFilter))
+          ?.name || "همه";
+
+      const tableHtml =
+        rows.length === 0
+          ? `<div style="text-align:center; padding:20px; color:#888;">📭 هیچ رویدادی در ${monthName} ${curY} ثبت نشده</div>`
+          : `
+        <div class="month-events-scroll" style="max-height:55vh; overflow:auto;">
+          <table class="month-events-table">
+            <thead>
+              <tr>
+                <th>روز</th>
+                <th>رویداد</th>
+                <th>وضعیت</th>
+                <th>واکنش</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows
+                .map(
+                  (r) => `
+                    <tr>
+                      <td class="col-day">${r.day}</td>
+                      <td class="col-event">${r.event}</td>
+                      <td class="col-status">${r.badges || `<span style="color:#999;">—</span>`}</td>
+                      <td class="col-reaction">${r.reaction}</td>
+                    </tr>
+                  `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      const content = `
+        <div class="month-events-modal-body" style="display:flex; flex-direction:column; gap:12px; overflow:visible;">
+          <div class="month-events-toolbar" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; position:relative; overflow:visible; flex:0 0 auto;">
+            <div style="position:relative; z-index:10000; overflow:visible;">
+              <button id="month-filter-btn" type="button" style="padding:6px 12px; background:#f5f5f5; border:1px solid #ddd; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:6px; user-select:none;">
+                ⚙️ تنظیمات
+              </button>
+
+              <div id="month-filter-menu" class="filter-dropdown-menu" style="display:none; background:#fff; border:1px solid #ddd; border-radius:6px; padding:8px 0; position:absolute; top:calc(100% + 4px); right:0; left:auto; z-index:10001; min-width:200px; max-height:300px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                ${categoriesArray
                   .map(
-                    (r) => `
-                      <tr>
-                        <td class="col-day">${r.day}</td>
-                        <td class="col-event">${r.event}</td>
-                        <td class="col-status">${r.badges || `<span style="color:#999;">—</span>`}</td>
-                        <td class="col-reaction">${r.reaction}</td>
-                      </tr>
+                    (cat) => `
+                      <div class="filter-option" data-filter="${cat.id}" style="padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px; user-select:none; touch-action:manipulation;">
+                        <span>${cat.name}</span>
+                        ${String(cat.id) === String(activeFilter) ? '<span style="margin-right:auto;">✓</span>' : ""}
+                      </div>
                     `,
                   )
                   .join("")}
-              </tbody>
-            </table>
+              </div>
+            </div>
+
+            <button id="month-print-btn" type="button" style="padding:6px 12px; background:#2196F3; color:white; border:none; border-radius:4px; cursor:pointer; flex:0 0 auto;">
+              🖨️ چاپ
+            </button>
+
+            <button id="month-excel-btn" type="button" style="padding:6px 12px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer; flex:0 0 auto;">
+              📊 خروجی اکسل
+            </button>
+
+            <span style="font-size:0.9em; color:#666; margin-right:auto;">
+              فیلتر فعال: <strong>${activeCategoryLabel}</strong>
+            </span>
           </div>
-        `;
-      }
+
+          ${tableHtml}
+        </div>
+      `;
 
       const modal = createModal(`📋 رویدادهای ${monthName} ${curY}`, content);
 
-      const modalEl = modal.closest?.(".cal-modal-overlay") || modal;
-      modalEl.querySelectorAll("*").forEach((el) => {
-        const cs = getComputedStyle(el);
-        if (
-          el.classList.contains("month-events-scroll") ||
-          el.tagName === "TABLE"
-        )
-          return;
-        if (
-          ["auto", "scroll"].includes(cs.overflow) ||
-          ["auto", "scroll"].includes(cs.overflowY) ||
-          ["auto", "scroll"].includes(cs.overflowX)
-        ) {
-          el.style.overflow = "visible";
-          el.style.overflowX = "visible";
-          el.style.overflowY = "visible";
-          el.style.maxHeight = "none";
-        }
-      });
+      const filterBtn = modal.querySelector("#month-filter-btn");
+      const filterMenu = modal.querySelector("#month-filter-menu");
+
+      if (filterBtn && filterMenu) {
+        const closeFilterMenu = () => {
+          filterMenu.style.display = "none";
+        };
+
+        filterBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const isVisible = filterMenu.style.display === "block";
+          filterMenu.style.display = isVisible ? "none" : "block";
+        });
+
+        filterMenu.querySelectorAll(".filter-option").forEach((opt) => {
+          opt.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const filterId = e.currentTarget.getAttribute("data-filter");
+            setMonthEventsFilter(filterId);
+
+            closeFilterMenu();
+
+            const overlay =
+              modal.closest?.(".cal-modal-overlay") ||
+              modal.closest?.(".cal-overlay") ||
+              document.querySelector(".cal-modal-overlay") ||
+              document.querySelector(".cal-overlay");
+
+            if (overlay) overlay.remove();
+
+            openMonthEvents();
+          });
+        });
+
+        modal.addEventListener("click", (e) => {
+          if (!filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
+            closeFilterMenu();
+          }
+        });
+      }
+
+      const printBtn = modal.querySelector("#month-print-btn");
+      if (printBtn) {
+        printBtn.addEventListener("click", () => {
+          const table = modal.querySelector("table");
+          if (!table) return;
+
+          const printWindow = window.open(
+            "",
+            "_blank",
+            "width=1000,height=800",
+          );
+          if (!printWindow) {
+            alert("لطفاً اجازه باز شدن پنجره پاپ‌آپ (Pop-up) را بدهید.");
+            return;
+          }
+
+          const title = `لیست رویدادهای ${MONTH_NAMES[curM - 1]} ${curY}`;
+          const tableContent = table.outerHTML;
+
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="fa" dir="rtl">
+            <head>
+              <meta charset="UTF-8">
+              <title>${title}</title>
+              <style>
+                @font-face { font-family: 'Tahoma'; src: local('Tahoma'); }
+                body { font-family: 'Tahoma', sans-serif; direction: rtl; padding: 20px; line-height: 1.6; }
+                h1 { text-align: center; font-size: 20px; margin-bottom: 20px; color: #333; border-bottom: 2px solid #444; padding-bottom: 10px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: auto; }
+                th, td { border: 1px solid #666; padding: 10px; text-align: right; font-size: 13px; }
+                th { background-color: #f8f8f8; color: #000; font-weight: bold; }
+                .col-day { width: 50px; text-align: center; font-weight: bold; }
+                .col-status, .col-reaction { width: 100px; text-align: center; }
+                tr:nth-child(even) { background-color: #fafafa; }
+                @media print {
+                  body { padding: 0; margin: 1cm; }
+                  button { display: none; }
+                }
+              </style>
+            </head>
+            <body>
+              <h1>${title}</h1>
+              ${tableContent}
+              <script>
+                window.onload = function() {
+                  setTimeout(function() {
+                    window.print();
+                    window.onafterprint = function() { window.close(); };
+                    setTimeout(function() { if(!window.closed) window.close(); }, 500);
+                  }, 300);
+                };
+              </script>
+            </body>
+            </html>
+          `);
+
+          printWindow.document.close();
+        });
+      }
+
+      const excelBtn = modal.querySelector("#month-excel-btn");
+      if (excelBtn) {
+        excelBtn.addEventListener("click", () => {
+          const table = modal.querySelector("table");
+          if (!table) return;
+
+          let csv = "\uFEFF";
+          const tableRows = table.querySelectorAll("tr");
+
+          tableRows.forEach((row) => {
+            const cells = row.querySelectorAll("th, td");
+            const rowData = Array.from(cells)
+              .map((cell) => `"${cell.innerText.replace(/"/g, '""')}"`)
+              .join(",");
+            csv += rowData + "\n";
+          });
+
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = `رویدادهای_${MONTH_NAMES[curM - 1]}_${curY}.csv`;
+          link.click();
+          URL.revokeObjectURL(link.href);
+        });
+      }
     }
 
     function loadDiary() {
