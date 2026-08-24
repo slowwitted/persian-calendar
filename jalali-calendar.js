@@ -1722,6 +1722,18 @@ function exportEvents() {
   showToast(`✅ ${parts.join(" و ")} خروجی گرفته شد`);
 }
 
+function loadDiary() {
+  try {
+    return JSON.parse(localStorage.getItem("jalali_diary") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveDiary(diary) {
+  localStorage.setItem("jalali_diary", JSON.stringify(diary));
+}
+
 function importEvents(onDone) {
   const input = document.createElement("input");
   input.type = "file";
@@ -4127,18 +4139,6 @@ function attachCalendar(containerId) {
           URL.revokeObjectURL(link.href);
         });
       }
-    }
-
-    function loadDiary() {
-      try {
-        return JSON.parse(localStorage.getItem("jalali_diary") || "{}");
-      } catch {
-        return {};
-      }
-    }
-
-    function saveDiary(diary) {
-      localStorage.setItem("jalali_diary", JSON.stringify(diary));
     }
 
     function openDiary() {
